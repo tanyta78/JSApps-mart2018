@@ -20,6 +20,7 @@ $(() => {
 
     $('#formLogin').submit(login);
     $('#formRegister').submit(register);
+    $('#formCreateBook').submit(createBook);
 
     $(document).on({
         ajaxStart: () => $('#loadingBox').show(),
@@ -58,10 +59,14 @@ $(() => {
                 $('#viewRegister').show();
                 break;
             case 'books':
+                getBooks();
                 $('#viewBooks').show();
                 break;
             case 'create':
                 $('#viewCreateBook').show();
+                break;
+            case 'edit':
+                $('#viewEditBook').show();
                 break;
             case 'logout':
                 $('#viewLogout').show();
@@ -70,17 +75,17 @@ $(() => {
     }
 
     function makeHeader(type) {
-        if(type==='basic'){
-            return{
+        if (type === 'basic') {
+            return {
                 'Authorization': 'Basic ' + btoa(appKey + ':' + appSecret),
                 'Content-type': 'application/json'
             };
-        }else{
-            return{
+        } else {
+            return {
                 'Authorization': 'Kinvey ' + localStorage.getItem('authtoken'),
                 'Content-type': 'application/json'
             };
-        }      
+        }
     }
 
     //User session
@@ -102,12 +107,15 @@ $(() => {
             $('#linkLogout').hide();
         }
     }
+
     function setStorage(data) {
         localStorage.setItem('authtoken', data._kmd.authtoken);
         localStorage.setItem('username', data.username);
+        localStorage.setItem('userId', data._id);
         setGreeting();
         showView('books');
     }
+
     function login(e) {
         e.preventDefault();
         console.log('Attempting login');
@@ -133,6 +141,7 @@ $(() => {
         $.ajax(req);
 
     }
+
     function register(e) {
         e.preventDefault();
         console.log('Attempting register');
@@ -140,6 +149,21 @@ $(() => {
         let username = $('#inputNewUsername').val();
         let password = $('#inputNewPassword').val();
         let repeat = $('#inputRepeatPassword').val();
+
+        if (username.length === 0) {
+            showError("Username cannot be empty!");
+            return;
+        }
+
+        if (password.length === 0) {
+            showError("Password cannot be empty!");
+            return;
+        }
+
+        if (repeat.length === 0) {
+            showError("Password can't be empty!");
+            return;
+        }
 
         if (password !== repeat) {
             showError("Passwords don't match!");
@@ -170,6 +194,7 @@ $(() => {
         }
 
     }
+
     function logout() {
 
         let req = {
@@ -192,6 +217,9 @@ $(() => {
 
     //Catalog
     function getBooks() {
+        let tbody = $('#viewBooks').find('table').find('tbody');
+        tbody.empty();
+
         let req = {
             url: baseUrl + 'appdata/' + appKey + '/books',
             headers: makeHeader('kinvey'),
@@ -202,7 +230,124 @@ $(() => {
         $.ajax(req);
 
         function displayBooks(data) {
-            
+            for (let book of data) {
+                let actions = [];
+                if (book._acl.creator === localStorage.getItem('userId')) {
+                    actions.push($('<button>&#9998;</button>').click(() => editBook(book)));
+                    actions.push($('<button>&#10006;</button>').click(() => deleteBook(book._id)));
+                }
+                let row = $('<tr>');
+                row.append(`<td>${book.title}</td>`)
+                    .append(`<td>${book.author}</td>`)
+                    .append(`<td>${book.description}</td>`)
+                    .append($(`<td>`).append(actions));
+                row.appendTo(tbody);
+            }
         }
+    }
+
+    function createBook() {
+        let title = $('#inputNewTitle').val();
+        let author = $('#inputNewAuthor').val();
+        let description = $('#inputNewDescription').val();
+
+        if (title.length === 0) {
+            showError("Title cannot be empty!");
+            return;
+        }
+
+        if (author.length === 0) {
+            showError("Author cannot be empty!");
+            return;
+        }
+
+        let book = {
+            title,
+            author,
+            description
+        };
+
+        let req = {
+            url: baseUrl + 'appdata/' + appKey + '/books',
+            method: 'POST',
+            headers: makeHeader('kinvey'),
+            data: JSON.stringify(book),
+            success: createSuccess,
+            error: handleError
+        };
+
+        $.ajax(req);
+
+        function createSuccess(data) {
+            $('#formCreateBook').trigger('reset');
+            showView('books');
+        }
+    }
+
+    function deleteBook(id) {
+        let req = {
+            url: baseUrl + 'appdata/' + appKey + '/books/' + id,
+            method: 'DELETE',
+            headers: makeHeader('kinvey'),
+            success: deleteSuccess,
+            error: handleError
+        };
+
+        $.ajax(req);
+
+        function deleteSuccess(data) {
+            showInfo(`Book deleted`);
+            showView('books');
+        }
+    }
+
+    function editBook(book) {
+        showView('edit');
+        $('#inputTitle').val(book.title);
+        $('#inputAuthor').val(book.author);
+        $('#inputDescription').val(book.description);
+
+        $('#formEditBook').submit(edit);
+
+        function edit() {
+            let title = $('#inputTitle').val();
+            let author = $('#inputAuthor').val();
+            let description = $('#inputDescription').val();
+
+            if (title.length === 0) {
+                showError("Title cannot be empty!");
+                return;
+            }
+
+            if (author.length === 0) {
+                showError("Author cannot be empty!");
+                return;
+            }
+
+            let newBook = {
+                title,
+                author,
+                description
+            };
+
+            let req = {
+                url: baseUrl + 'appdata/' + appKey + '/books/'+book._id,
+                method: 'PUT',
+                headers: makeHeader('kinvey'),
+                data: JSON.stringify(newBook),
+                success: editSuccess,
+                error: handleError
+            };
+    
+            $.ajax(req);
+
+            function editSuccess(data) {
+                showInfo('Book edited');
+                showView('books');
+            }
+        }
+      
+
+        
     }
 });
