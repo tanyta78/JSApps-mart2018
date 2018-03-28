@@ -1,6 +1,7 @@
 function startApp() {
 
     $('header').find('a').show();
+    const adsDiv = $('#ads');
     //Navigation and headers
 
     function showView(view) {
@@ -17,6 +18,7 @@ function startApp() {
                 break;
             case 'ads':
                 $('#viewAds').show();
+                loadAds();
                 break;
             case 'create':
                 $('#viewCreateAd').show();
@@ -31,21 +33,17 @@ function startApp() {
         }
     }
 
-    function navigateTo(e) {
-        $('section').hide();
-        let target = $(e.target).attr('data-target');
-        console.log(target);
-
-        $('#' + target).show();
-    }
-
     //Attach event listener
-    $('header').find('a[data-target]').click(navigateTo);
+    $('#linkHome').click(() => showView('home'));
+    $('#linkLogin').click(() => showView('login'));
+    $('#linkRegister').click(() => showView('register'));
+    $('#linkListAds').click(() => showView('ads'));
+    $('#linkCreateAd').click(() => showView('create'));
+    $('#linkLogout').click(logout);
+
     $('#buttonLoginUser').click(login);
     $('#buttonRegisterUser').click(register);
-    $('#linkLogout').click(logout);
-    
-
+    $('#buttonCreateAd').click(createAd);
 
     //Notifications
     $(document).on({
@@ -172,10 +170,11 @@ function startApp() {
                 username,
                 password
             }, 'basic');
+            showInfo('Logged in!');
             saveSession(data);
             showView('ads');
         } catch (error) {
-           handleError(error);
+            handleError(error);
         }
 
 
@@ -191,6 +190,7 @@ function startApp() {
                 username,
                 password
             }, 'basic');
+            showInfo('Successfully registered!');
             saveSession(data);
             showView('ads');
         } catch (error) {
@@ -198,17 +198,154 @@ function startApp() {
         }
     }
 
-    async function logout () {
+    async function logout() {
         try {
             let data = await requester.post('user', '_logout', {
-               authtoken:localStorage.getItem('authtoken')
+                authtoken: localStorage.getItem('authtoken')
             });
-           localStorage.clear();
-           userLoggedOut();
+            localStorage.clear();
+            showInfo('Successfully logged out!');
+            userLoggedOut();
             showView('home');
-            
+
         } catch (err) {
             handleError(err);
         }
+    }
+
+    async function loadAds() {
+        let data = await requester.get('appdata', 'adverts');
+        adsDiv.empty();
+        if (data.length === 0) {
+            adsDiv.append('<p>No ads to display!</p>');
+            return;
+        }
+
+        for (let ad of data) {
+            let html = $('<div>');
+            html.addClass('ad-box');
+            let title = $(`<div class="ad-title">${ad.title}</div>`);
+            if (ad._acl.creator === localStorage.getItem('id')) {
+                let deleteBtn = $('<button>&#10006;</button>').click(() => deleteAd(ad._id));
+                deleteBtn.addClass('ad-control');
+                deleteBtn.appendTo(title);
+                let editBtn = $('<button>&#9998;</button>').click(() => openEditAd(ad));
+                editBtn.addClass('ad-control');
+                editBtn.appendTo(title);
+            }
+            html.append(title);
+            html.append(`<div><img src="${ad.imageUrl}"></div>`);
+            html.append(`<div>By ${ad.publisher} | Price: ${ad.price.toFixed(2)}</div>`);
+
+            adsDiv.append(html);
+
+        }
+
+    }
+
+    function openEditAd(ad) {
+        let form = $('#formEditAd');
+        form.find('input[name="title"]').val(ad.title);
+        form.find('textarea[name="description"]').val(ad.description);
+        form.find('input[name="price"]').val(ad.price);
+        form.find('input[name="image"]').val(ad.imageUrl);
+
+        let date = ad.date;
+        let publisher = ad.publisher;
+        let id = ad._id;
+
+        form.find('#buttonEditAd').click(() => {
+            editAd(id, date, publisher);
+        });
+        showView('edit');
+    }
+
+    async function editAd(id, date, publisher) {
+        let form = $('#formEditAd');
+        let title = form.find('input[name="title"]').val();
+        let description = form.find('textarea[name="description"]').val();
+        let price = form.find('input[name="price"]').val();
+        let imageUrl = form.find('input[name="image"]').val();
+
+        if (title.length === 0) {
+            showError('Title cannot be empty');
+            return;
+        }
+
+        if (description.length === 0) {
+            showError('Description cannot be empty');
+            return;
+        }
+
+        if (price.length === 0) {
+            showError('Price cannot be empty');
+            return;
+        }
+
+        let editedAd = {
+            title,
+            description,
+            price: Number(price),
+            imageUrl,
+            date,
+            publisher
+        }
+
+        try {
+            await requester.update('appdata', 'adverts/' + id, editedAd);
+            showInfo('Ad edited!');
+            showView('ads');
+        } catch (error) {
+            handleError(error);
+        }
+    }
+
+    async function deleteAd(id) {
+        await requester.remove('appdata', 'adverts/' + id);
+        showInfo('Ad deleted');
+        showView('ads');
+    }
+
+    async function createAd() {
+        let form = $('#formCreateAd');
+        let title = form.find('input[name="title"]').val();
+        let description = form.find('textarea[name="description"]').val();
+        let price = form.find('input[name="price"]').val();
+        let imageUrl = form.find('input[name="image"]').val();
+        let date = (new Date()).toString('yyyy-MM-dd');
+        let publisher = localStorage.getItem('username');
+
+        if (title.length === 0) {
+            showError('Title cannot be empty');
+            return;
+        }
+
+        if (description.length === 0) {
+            showError('Description cannot be empty');
+            return;
+        }
+
+        if (price.length === 0) {
+            showError('Price cannot be empty');
+            return;
+        }
+
+        let newAd = {
+            title,
+            description,
+            price: Number(price),
+            imageUrl,
+            date,
+            publisher
+        }
+
+        try {
+            await requester.post('appdata', 'adverts', newAd);
+            showInfo('Ad created!');
+            showView('ads');
+        } catch (error) {
+            handleError(error);
+        }
+
     }
 }
