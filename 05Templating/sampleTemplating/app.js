@@ -24,9 +24,11 @@ $(() => {
 
 
     async function getTemplate() {
-        let template = await $.get('contact.html');
+        let source=await $.get('contact.html');
+        let template = compile(source);
         for (let contact of contacts) {
-            main[0].innerHTML+=parse(template, contact);
+          //  main[0].innerHTML+=parse(template, contact);
+          main[0].innerHTML+=template(contact);
         }
      
 
@@ -41,4 +43,9 @@ $(() => {
             }
         });
     }
-})
+
+    function compile(htmlAsString){
+        return (context)=>parse(htmlAsString,context);
+    }
+
+});
