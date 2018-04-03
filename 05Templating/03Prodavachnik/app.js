@@ -18,59 +18,62 @@ function startApp() {
         templates['ad'] = Handlebars.registerPartial('adBox', adBoxTemplate);
         templates['headers'] = Handlebars.compile(headersTemplate);
 
-        console.log(templates['headers']);
-
-    }
-    $('header').find('a').show();
-    //Attach event listener
-    $('#linkHome').click(() => showView('home'));
-    $('#linkLogin').click(() => showView('login'));
-    $('#linkRegister').click(() => showView('register'));
-    $('#linkListAds').click(() => showView('ads'));
-    $('#linkCreateAd').click(() => showView('create'));
-    $('#linkLogout').click(logout);
-
-    $('#buttonLoginUser').click(login);
-    $('#buttonRegisterUser').click(register);
-    $('#buttonCreateAd').click(createAd);
-
-    //Notifications
-    $(document).on({
-        ajaxStart: () => $('#loadingBox').show(),
-        ajaxStop: () => $('#loadingBox').fadeOut()
-    });
-
-    $('#infoBox').click((e) => $(e.target).hide());
-    $('#errorBox').click((e) => $(e.target).hide());
-
-    if (localStorage.getItem('authtoken') !== null && localStorage.getItem('username') !== null) {
-        userLoggedIn();
-    } else {
-        userLoggedOut();
     }
 
-    showView('home');
+    showHideLinks();
+    async function showHideLinks() {
+        let headers = window.headers.unauthHeaders;
 
-    function userLoggedIn() {
-        $('#loggedInUser').text(`Welcome, ${localStorage.getItem('username')}!`);
-        $('#loggedInUser').show();
-        $('#linkLogin').hide();
-        $('#linkRegister').hide();
-        $('#linkLogout').show();
-        $('#linkListAds').show();
-        $('#linkCreateAd').show();
+        if (localStorage.getItem('authtoken')) {
+            headers = window.headers.authHeaders;
+        }
+        let source = await $.get('./templates/header-templates.html');
+        let compiled = Handlebars.compile(source);
+        let template = await compiled({ headers });
 
+        //sometimes do not work
+        // let template = await templates.headers({ headers });
+        console.log(await compiled({ headers }));
+
+        let menu = $('#menu');
+        if (menu.length) {
+            menu.html(template);
+        } else {
+            $('#app').append(template);
+        }
+        $('header').find('a').show();
+
+        if (localStorage.getItem('authtoken')) {
+            $('#loggedInUser').text(`Welcome, ${localStorage.getItem('username')}!`);
+        }
+
+        showView('home');
+        attachEventLinks();
     }
 
-    function userLoggedOut() {
-        $('#loggedInUser').text(``);
-        $('#loggedInUser').hide();
-        $('#linkLogin').show();
-        $('#linkRegister').show();
-        $('#linkLogout').hide();
-        $('#linkListAds').hide();
-        $('#linkCreateAd').hide();
+    //attachEventLinks();
 
+    function attachEventLinks() {
+        //Attach event listener
+        $('#linkHome').click(() => showView('home'));
+        $('#linkLogin').click(() => showView('login'));
+        $('#linkRegister').click(() => showView('register'));
+        $('#linkListAds').click(() => showView('ads'));
+        $('#linkCreateAd').click(() => showView('create'));
+        $('#linkLogout').click(logout);
+
+        $('#buttonLoginUser').click(login);
+        $('#buttonRegisterUser').click(register);
+        $('#buttonCreateAd').click(createAd);
+
+        //Notifications
+        $(document).on({
+            ajaxStart: () => $('#loadingBox').show(),
+            ajaxStop: () => $('#loadingBox').fadeOut()
+        });
+
+        $('#infoBox').click((e) => $(e.target).hide());
+        $('#errorBox').click((e) => $(e.target).hide());
     }
 
     function showView(view) {
@@ -176,7 +179,7 @@ function startApp() {
         localStorage.setItem('username', data.username);
         localStorage.setItem('id', data._id);
         localStorage.setItem('authtoken', data._kmd.authtoken);
-        userLoggedIn();
+        // userLoggedIn();
 
     }
 
@@ -224,8 +227,9 @@ function startApp() {
             });
             localStorage.clear();
             showInfo('Successfully logged out!');
-            userLoggedOut();
-            showView('home');
+            // userLoggedOut();
+            showHideLinks();
+           
 
         } catch (err) {
             handleError(err);
@@ -257,7 +261,8 @@ function startApp() {
     }
 
     async function openDetailsAd() {
-        let id = $(this).parent().attr('data-id');
+        let id = $(this).siblings('[data-id]').attr('data-id');
+                
         let ad = await requester.get('appdata', `adverts/${id}`, 'kinvey');
         let detailDiv = $('#details');
         detailDiv.empty();
