@@ -1,18 +1,4 @@
-{{#each }}
-<section id="view{{id}}" class="view{{id}}">
-    <h1 class="titleForm">{{text}}</h1>
-    <form id="form{{id}}" class="form">
-        <div>Username:</div>
-        <div>
-            <input type="text" name="username" required />
-        </div>
-        <div>Password:</div>
-        <div>
-            <input type="password" name="passwd" required />
-        </div>
-        <div>
-            <input type="button" id="button{{id}}User" value="{{id}}" />
-        </div>
-    </form>
-</section>
+{{#each sessions}}
+    {{> userBox}}
 {{/each}}
+

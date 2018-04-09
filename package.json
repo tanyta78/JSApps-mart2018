@@ -4,7 +4,10 @@
   "description": "folder for my last course",
   "main": "index.js",
   "dependencies": {
-    "handlebars": "^4.0.11"
+    "bootstrap": "^4.0.0",
+    "handlebars": "^4.0.11",
+    "jquery": "^3.3.1",
+    "sammy": "^0.7.6"
   },
   "devDependencies": {},
   "scripts": {

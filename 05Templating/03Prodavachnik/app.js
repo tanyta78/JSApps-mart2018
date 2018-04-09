@@ -8,15 +8,19 @@ function startApp() {
 
     async function loadTemplates() {
 
-        const [adsCatalogTemplate, adBoxTemplate, headersTemplate] = await Promise.all([
+        const [adsCatalogTemplate, adBoxTemplate, headersTemplate, sessionsTemplate,userBoxTemplate] = await Promise.all([
             $.get('./templates/ads_catalog.html'),
             $.get('./templates/ad_box_partial.html'),
-            $.get('./templates/header-templates.html')
+            $.get('./templates/header-templates.html'),
+            $.get('./templates/session-template.html'),
+            $.get('./templates/session-partial.html')
         ]);
 
         templates['catalog'] = Handlebars.compile(adsCatalogTemplate);
         templates['ad'] = Handlebars.registerPartial('adBox', adBoxTemplate);
         templates['headers'] = Handlebars.compile(headersTemplate);
+        templates['sessions'] = Handlebars.compile(sessionsTemplate);
+        templates['user']=Handlebars.registerPartial('userBox',userBoxTemplate);
 
     }
 
@@ -29,12 +33,11 @@ function startApp() {
         }
         let source = await $.get('./templates/header-templates.html');
         let compiled = Handlebars.compile(source);
-        let template = await compiled({ headers });
+        //let template = await compiled({ headers });
 
         //sometimes do not work
-        // let template = await templates.headers({ headers });
-        console.log(await compiled({ headers }));
-
+        let template = await templates.headers({ headers });
+             
         let menu = $('#menu');
         if (menu.length) {
             menu.html(template);
@@ -47,11 +50,9 @@ function startApp() {
             $('#loggedInUser').text(`Welcome, ${localStorage.getItem('username')}!`);
         }
 
-        showView('home');
+       
         attachEventLinks();
     }
-
-    //attachEventLinks();
 
     function attachEventLinks() {
         //Attach event listener
@@ -61,9 +62,7 @@ function startApp() {
         $('#linkListAds').click(() => showView('ads'));
         $('#linkCreateAd').click(() => showView('create'));
         $('#linkLogout').click(logout);
-
-        $('#buttonLoginUser').click(login);
-        $('#buttonRegisterUser').click(register);
+ 
         $('#buttonCreateAd').click(createAd);
 
         //Notifications
@@ -76,8 +75,13 @@ function startApp() {
         $('#errorBox').click((e) => $(e.target).hide());
     }
 
+   
+    renderSessionSections();
+    showView('home');
+
     function showView(view) {
         $('section').hide();
+
         switch (view) {
             case 'home':
                 $('#viewHome').show();
@@ -105,6 +109,24 @@ function startApp() {
                 break;
 
         }
+    }
+
+    async function renderSessionSections() {
+        let sessions=window.sessions;
+console.log(sessions);
+
+        let source = await $.get('./templates/session-template.html');
+        let compiled = Handlebars.compile(source);
+        let template = await compiled({ sessions });
+
+        //sometimes do not work
+        // let template = await templates.sessions({sessions});
+        console.log('in render section'+ template);
+          
+        
+        $('#users').html(template);
+        $('#buttonLoginUser').click(login);
+        $('#buttonRegisterUser').click(register);
     }
 
     function showInfo(message) {
@@ -194,6 +216,7 @@ function startApp() {
             }, 'basic');
             showInfo('Logged in!');
             saveSession(data);
+            showHideLinks();
             showView('ads');
         } catch (error) {
             handleError(error);
@@ -229,7 +252,7 @@ function startApp() {
             showInfo('Successfully logged out!');
             // userLoggedOut();
             showHideLinks();
-           
+            showView('home');
 
         } catch (err) {
             handleError(err);
@@ -262,7 +285,7 @@ function startApp() {
 
     async function openDetailsAd() {
         let id = $(this).siblings('[data-id]').attr('data-id');
-                
+
         let ad = await requester.get('appdata', `adverts/${id}`, 'kinvey');
         let detailDiv = $('#details');
         detailDiv.empty();

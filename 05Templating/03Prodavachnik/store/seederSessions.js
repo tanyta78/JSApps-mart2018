@@ -2,19 +2,16 @@
     class Session {
         constructor(id, text) {
             this.id = id;
-            this.text=text;
-           
+            this.text = text;
+
         }
     }
 
-    
     let sessions = [
-        new Session('Login','Please login'),
-        new Session('Register','Please register here'),
+        new Session('Login', 'Please login'),
+        new Session('Register', 'Please register here'),
 
     ];
-
-    
 
     window.sessions = {
         sessions
