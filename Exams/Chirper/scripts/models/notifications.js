@@ -28,7 +28,9 @@ let notify = (() => {
     }
 
     function handleError(reason) {
-        showError(reason.responseJSON.description);
+        //showError(reason.responseJSON.description);
+        console.log(reason);
+        
     }
 
     return {

@@ -1,11 +1,13 @@
 let service = {
     getChirps: function (filter) {
+       
         if (filter) {
             return new Promise((resolve, reject) => {
                 // Resolve user ID
                 requester.get('user', `?query={"username":"${filter}"}`).then((data) => {
                     if (data.length !== 1) reject('No such user in database');
                     let userId = data[0]._id;
+               //  let userId='59ae425c14ee505004862409';
                     // Fetch related posts
                     requester.get('appdata', `chirps?query={"_acl.creator":"${userId}"}&sort={"_kmd.ect": -1}`)
                         .then(resolve)
@@ -13,7 +15,7 @@ let service = {
                 }).catch(reject);
             });
         } else {
-            let subs = JSON.parse(sessionStorage.getItem('subscriptions'));
+            let subs = JSON.parse(sessionStorage.getItem('subscriptions')) || [];
             subs = subs.map(e => `"${e}"`);
             return requester.get('appdata', `chirps?query={"author":{"$in": [${subs}]}}&sort={"_kmd.ect": -1}`);
         }

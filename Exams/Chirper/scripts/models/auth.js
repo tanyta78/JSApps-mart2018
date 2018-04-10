@@ -6,7 +6,11 @@ let auth = (() => {
         sessionStorage.setItem('userId', userId);
         let username = userInfo.username;
         sessionStorage.setItem('username', username);
-        //sessionStorage.setItem('teamId', userInfo.teamId);
+        sessionStorage.setItem('id', userInfo._id);
+
+        let subscriptions = userInfo.subscriptions || [];
+        sessionStorage.setItem('subscriptions', JSON.stringify(subscriptions));
+
     }
 
     // user/login
@@ -16,17 +20,18 @@ let auth = (() => {
             password
         };
 
-        return requester.post('user', 'login', 'basic', userData);
+        return requester.post('user', 'login', userData, 'basic');
     }
 
     // user/register
     function register(username, password, repeatPassword) {
         let userData = {
             username,
-            password
+            password,
+            subscriptions: []
         };
 
-        return requester.post('user', '', 'basic', userData);
+        return requester.post('user', '', userData, 'basic');
     }
 
     // user/logout
@@ -35,7 +40,7 @@ let auth = (() => {
             authtoken: sessionStorage.getItem('authtoken')
         };
 
-        return requester.post('user', '_logout', 'kinvey', logoutData);
+        return requester.post('user', '_logout', logoutData, 'kinvey');
     }
 
     function handleError(reason) {
