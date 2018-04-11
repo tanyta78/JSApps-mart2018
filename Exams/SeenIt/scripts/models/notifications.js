@@ -24,13 +24,12 @@ let notify = (() => {
 
     function showError(message) {
         $('#errorBox').find('span').text(message);
+        $('#errorBox').show();
         $('#errorBox').fadeIn();
     }
 
     function handleError(reason) {
-        showError(reason.responseJSON.description);
-        console.log(reason);
-        
+        showError(reason.responseJSON.description);       
     }
 
     return {
