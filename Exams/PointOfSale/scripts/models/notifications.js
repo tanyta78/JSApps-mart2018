@@ -11,6 +11,7 @@ let notify = (() => {
                 if (!loading) $('#loadingBox').fadeOut();
             }, 500)
         });
+
         $('#infoBox').click((event) => $(event.target).fadeOut());
         $('#errorBox').click((event) => $(event.target).fadeOut());
         

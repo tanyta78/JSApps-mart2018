@@ -1,36 +1,53 @@
-let messages=(()=>{
-    function getAllUsers(){
-        return requester.get('user','','Kinvey');
+let receipts = (() => {
+    function getActiveReceipt() {
+        let userId = sessionStorage.getItem('userId');
+        return requester.get('appdata', `receipts?query={"_acl.creator":"${userId}","active":true}`, 'Kinvey');
     }
 
-    function getAllmessages(){
-        return requester.get('appdata','messages?query={}&sort={"_kmd.ect": -1}','Kinvey');
+    function getEntriesByReceiptId(receiptId) {
+        return requester.get('appdata', `entries?query={"receiptId":"${receiptId}"}`, 'Kinvey');
     }
 
-    function getMyMessages(username) {  
-        return requester.get('appdata',`messages?query={"recipient_username":"${username}"}`,'kinvey');
+    function createReceipt(productCount, total) {
+        let active = true;
+        let data = { active, productCount, total };
+        return requester.post('appdata', 'receipts', data, 'kinvey');
     }
 
-    function getArchiveMessages(username) {  
-        return requester.get('appdata',`messages?query={"sender_username":"${username}"}`,'kinvey');
+    function addEntry(type, qty, price, receiptId) {
+        //to check is receipt active!!!
+        let data = { type, qty, price, receiptId };
+        return requester.post('appdata', 'entries', data, 'kinvey');
     }
 
-    function createMessage(sender_username,sender_name,recipient_username,text) { 
-        let data = {sender_username,sender_name,recipient_username,text};
-        return requester.post('appdata','messages',data,'kinvey');
-     }
+    function deleteEntry(entry_id) {
+        // can we delete from unactive receipt
+        return requester.remove('appdata', `entries/${entry_id}`, 'kinvey');
+    }
 
-    function deleteMessage(messageId) { 
-        return requester.remove('appdata',`messages/${messageId}`,'kinvey');
-     }
+    function getMyReceipts() {
+        let userId = sessionStorage.getItem('userId');
+        return requester.get('appdata', `receipts?query={"_acl.creator":"${userId}","active":"false"}`, 'Kinvey');
+    }
 
-    
-    return{
-        getAllUsers,
-        getAllmessages,
-        getMyMessages,
-        getArchiveMessages,
-        createMessage,
-        deleteMessage
+    function getReceiptDetails(receiptId) {
+        return requester.get('appdata', `receipts/${receiptId}`, 'kinvey');
+
+    }
+
+    function checkout(receiptId) {
+        
+    }
+
+
+    return {
+        getActiveReceipt,
+        getEntriesByReceiptId,
+        createReceipt,
+        checkout,
+        getReceiptDetails,
+        getMyReceipts,
+        deleteEntry,
+        addEntry
     };
 })();

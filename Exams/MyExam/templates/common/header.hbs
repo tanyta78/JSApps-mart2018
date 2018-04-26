@@ -1,0 +1,22 @@
+<header class="clearfix" id="profile">
+            <div id="cashier">
+                <span>Cashier: </span>
+                <a href="#">{{username}}</a>
+            </div>
+            <nav id="nav">
+                <ul>
+                    <li>
+                        {{!-- active true === create receipt 
+                        Whenever the user opens the editor, you should retrieve the currently active receipt and all products related to it (by receiptId). If there is no active receipt, you must create it in the database. Note that the HTML contains hidden input fields, which you can use. There must be only one active receipt at any one time on the server!--}}
+                        <a href="#/editor">Editor</a>
+                    </li>
+                    <li>
+                        {{!--  active false --}}
+                        <a href="#/allReceipts">Overview</a>
+                    </li>
+                    <li>
+                        <a href="#/logout" class="logout">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+</header>

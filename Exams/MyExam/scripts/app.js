@@ -1,5 +1,5 @@
 $(() => {
-    const app = Sammy('#app', function () {
+    const app = Sammy('#container', function () {
         this.use('Handlebars', 'hbs');
 
 
@@ -8,67 +8,62 @@ $(() => {
 
         function getWelcomePage(ctx) {
 
-            ctx.isAuth = auth.isAuth();
-            ctx.username = sessionStorage.getItem('username');
-            ctx.loadPartials({
-                header: './templates/common/header.hbs',
-                footer: './templates/common/footer.hbs',
-            }).then(function () {
-                this.partial('./templates/welcome.hbs');
-            });
+            if (auth.isAuth()) {
+                ctx.redirect('#/editor');
+            } else {
+                ctx.loadPartials({
+                    loginForm: './templates/forms/loginForm.hbs',
+                    footer: './templates/common/footer.hbs',
+                    registerForm: './templates/forms/registerForm.hbs',
+                }).then(function () {
+                    this.partial('./templates/welcome.hbs');
+                });
+            }
+
 
         }
 
-        this.get('#/register', (ctx) => {
-            ctx.loadPartials({
-                header: './templates/common/header.hbs',
-                footer: './templates/common/footer.hbs'
-            }).then(function () {
-                this.partial('./templates/forms/registerForm.hbs');
-            });
-
-        });
-
         this.post('#/register', (ctx) => {
-            let username = ctx.params.username;
-            let password = ctx.params.password;
-            let name = ctx.params.name;
+            let usernameRegister = ctx.params.usernameRegister;
+            let passwordRegister = ctx.params.passwordRegister;
+            let repeatPassword = ctx.params.repeatPassword;
 
-            auth.register(username, password, name)
-                .then((userData) => {
-                    auth.saveSession(userData);
-                    auth.showInfo('User registration successful');
-                    ctx.redirect('#/home');
-                }).catch(auth.handleError);
+            console.log(usernameRegister);
+            console.log(passwordRegister);
+            console.log(repeatPassword);
 
 
-        });
-
-        this.get('#/login', (ctx) => {
-            ctx.loadPartials({
-                header: './templates/common/header.hbs',
-                footer: './templates/common/footer.hbs'
-            }).then(function () {
-                this.partial('./templates/forms/loginForm.hbs');
-            });
-
+            if (usernameRegister.length < 5) {
+                notify.showError('Username should be at least 5 characters!');
+            } else if (passwordRegister === '') {
+                notify.showError('Password should not be empty!');
+            } else if (repeatPassword !== passwordRegister) {
+                notify.showError('Passwords should match!!!');
+            } else {
+                auth.register(usernameRegister, passwordRegister)
+                    .then((userData) => {
+                        auth.saveSession(userData);
+                        notify.showInfo('User registration successful');
+                        ctx.redirect('#/home');
+                    }).catch(notify.showError);
+            }
         });
 
         this.post('#/login', (ctx) => {
-            let username = ctx.params.username;
-            let password = ctx.params.password;
+            let usernameLogin = ctx.params.usernameLogin;
+            let passwordLogin = ctx.params.passwordLogin;
 
-            if (username === '' || password === '') {
-                auth.handleError('All fields should be non empty');
+            if (usernameLogin === '' || passwordLogin === '') {
+                notify.handleError('All fields should be non empty');
             } else {
-                auth.login(username, password)
+                auth.login(usernameLogin, passwordLogin)
                     .then((userData) => {
                         auth.saveSession(userData);
                         ctx.username = sessionStorage.getItem('username');
-                        auth.showInfo('Login successful!');
+                        notify.showInfo('Login successful!');
                         ctx.redirect('#/home');
                     })
-                    .catch(auth.handleError);
+                    .catch(notify.handleError);
             }
         });
 
@@ -81,122 +76,133 @@ $(() => {
                 }).catch(auth.handleError);
         });
 
-        this.get('#/myMessages', (ctx) => {
-            if (!auth.isAuth()) {
-                ctx.redirect('#/home');
-                return;
-            }
-            let username = sessionStorage.username;
+        this.get('#/editor', (ctx) => {
 
-            messages.getMyMessages(username)
-                .then((messages) => {
-                    messages.forEach((m, i) => {
-                        m.date = formatDate(m._kmd.ect);
-                    });
+            ctx.username = sessionStorage.username;
 
-                    ctx.isAuth = auth.isAuth();
-                    ctx.username = sessionStorage.getItem('username');
-                    ctx.messages = messages;
+            receipts.getActiveReceipt()
+                .then(async function (receiptInfo) {
+                    if (receiptInfo.length === 0) {
+                        await receipts.createReceipt(0, 0)
+                            .then((receipt) => {
+                                ctx.ActiveReceiptId = receipt._id;
 
-                    ctx.loadPartials({
-                        header: './templates/common/header.hbs',
-                        footer: './templates/common/footer.hbs',
-                        message: './templates/messages/message.hbs'
-                    }).then(function () {
-                        this.partial('./templates/messages/myMessagePage.hbs');
-                    });
-                }).catch(auth.showError);
-        });
-
-        this.get('#/send', (ctx) => {
-            if (!auth.isAuth()) {
-                ctx.redirect('#/home');
-                return;
-            }
-            ctx.isAuth = auth.isAuth();
-            ctx.username = sessionStorage.getItem('username');
-
-            messages.getAllUsers()
-                .then((userList) => {
-                    ctx.userList = userList;
-                    ctx.loadPartials({
-                        header: './templates/common/header.hbs',
-                        footer: './templates/common/footer.hbs'
-                    }).then(function () {
-                        this.partial('./templates/messages/sendMessagePage.hbs');
-                    });
-                }).catch(auth.showError);
-
-        });
-
-        this.post('#/send', (ctx) => {
-            if (!auth.isAuth()) {
-                ctx.redirect('#/home');
-                return;
-            }
-
-            let sender_username = sessionStorage.getItem('username');
-            let sender_name = sessionStorage.getItem('name');
-            let recipient_username = ctx.params.recipient;
-            let text = ctx.params.text;
-
-
-            if (text === '') {
-                auth.showError('Text is required!');
-            } else {
-                messages.createMessage(sender_username, sender_name, recipient_username, text)
-                    .then(() => {
-                        auth.showInfo('Message sent.');
-                        ctx.redirect('#/archive');
-                    })
-                    .catch(auth.handleError);
-            }
-        });
-
-        this.get('#/archive', (ctx) => {
-            if (!auth.isAuth()) {
-                ctx.redirect('#/home');
-                return;
-            }
-            ctx.isAuth = auth.isAuth();
-            ctx.username = sessionStorage.getItem('username');
-
-            messages.getArchiveMessages(ctx.username)
-                .then((messages) => {
-                    messages.forEach((m, i) => {
-                        m.date = formatDate(m._kmd.ect);
-                    });
-
-                    ctx.messages = messages;
-
-                    ctx.loadPartials({
-                        header: './templates/common/header.hbs',
-                        footer: './templates/common/footer.hbs',
-                        archive: './templates/messages/archive.hbs'
-                    }).then(function () {
-                        this.partial('./templates/messages/archivePage.hbs')
-                            .then(() => {
-                                $('button')
-                                    .click((e) => {
-                                        let id = $(e.target).attr('data-id');
-                                        deleteMessage(id);
-                                        ctx.redirect('#/home');
-                                    });
                             });
-                    });
-                }).catch(auth.showError);
+
+                    } else {
+                        ctx.ActiveReceiptId = receiptInfo[0]._id;
+                    }
+
+                    receipts.getEntriesByReceiptId(ctx.ActiveReceiptId)
+                        .then((entries) => {
+                            ctx.entries = entries;
+                            console.log(ctx.ActiveReceiptId);
+                            ctx.loadPartials({
+                                header: './templates/common/header.hbs',
+                                footer: './templates/common/footer.hbs',
+                                createEntryForm: './templates/forms/createEntryForm.hbs',
+                                createReceiptForm: './templates/forms/createReceiptForm.hbs'
+                            }).then(function () {
+                                this.partial('./templates/views/createReceiptView.hbs')
+                            });
+                        });
+                })
+                .catch(notify.handleError);
         });
+
+
+        this.post('#/addEntry', (ctx) => {
+            //type, qty, price, receiptId
+            let type = ctx.params.type;
+            let qty = ctx.params.qty;
+            let price = ctx.params.price;
+
+            let receiptId = $(this).attr('data-id');
+
+            if (type === '') {
+                notify.handleError('Type can not be empty');
+            } else if (typeof qty !== 'number') {
+                notify.handleError('Quantity must be a number');
+            } else if (typeof price !== 'number') {
+                notify.handleError('Quantity must be a number');
+            } else {
+                let sub = $(this).find('#subtotal').text(qty * price);
+
+                receipts.addEntry(type, qty, price, receiptId)
+                    .then((ctx) => {
+                        ctx.recieptId=receipt._id;
+                        ctx.productCount+= receipt.productCount;
+                        ctx.total+= receipt.total;
+                        ctx.redirect('#/editor');
+                    })
+                    .catch(notify.handleError);
+            }
+
+        });
+
+        this.get('#/allReceipts', (ctx) => {
+            receipts.getMyReceipts()
+                .then((receipts) => {
+                    receipts.forEach((r, i) => {
+                        r.date = formatDate(r._kmd.ect);
+                    });
+                    ctx.receipts = receipts;
+                    ctx.loadPartials({
+                        header: './templates/common/header.hbs',
+                        footer: './templates/common/footer.hbs',
+                        receipt: './templates/common/receipt.hbs',
+                    }).then(function () {
+                        this.partial('./templates/views/allReceiptsView.hbs');
+                    });
+                }).catch(notify.handleError);
+        });
+
+        this.get('#/receiptDetails/:_id', (ctx) => {
+
+            receipts.getReceiptDetails(_id)
+                .then((receipt) => {
+                    receipts.getEntriesByReceiptId(receipt._id)
+                        .then((entries) => {
+
+                            entries.forEach((e, i) => {
+                                e.subtotal = e.price * e.qty;
+                            });
+
+                            ctx.entries = entries;
+
+                            ctx.loadPartials({
+                                header: './templates/common/header.hbs',
+                                footer: './templates/common/footer.hbs',
+                                entry: './templates/common/entry.hbs',
+                            }).then(function () {
+                                this.partial('./templates/views/receiptDetailView.hbs');
+                            });
+                        })
+                }).catch(notify.handleError);
+
+
+        });
+
+        this.get('#/delete/:_id', (ctx) => {
+
+            receipts.deleteEntry(_id)
+                .then(() => {
+                    notify.showInfo('Entry removed');
+                    ctx.redirect('#/editor');
+                })
+                .catch(notify.handleError);
+        });
+
+        this.post('#/checkout',(ctx)=>{
+
+            
+        })
 
     });
 
     app.run();
 
-    function deleteMessage (messageId,ctx) {
-        messages.deleteMessage(messageId).then(()=>{
-            auth.showInfo('Message deleted');
-           
-        });
-    }
+    
 
     function formatDate(dateISO8601) {
         let date = new Date(dateISO8601);
@@ -209,13 +215,6 @@ $(() => {
         function padZeros(num) {
             return ('0' + num).slice(-2);
         }
-    }
-
-    function formatSender(name, username) {
-        if (!name)
-            return username;
-        else
-            return username + ' (' + name + ')';
     }
 
 
